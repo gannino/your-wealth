@@ -5,6 +5,18 @@ node_modules/
 
 # Testing
 coverage/
+playwright-report/
+test-results/
+*.spec.ts
+
+# Test artifacts
+E2E_TEST_SUMMARY.md
+FINAL_TEST_SUMMARY.md
+TEST_IMPROVEMENTS_SUMMARY.md
+agentdb.rvf
+agentdb.rvf.lock
+deployed-homepage.png
+homepage.png
 
 # Production
 dist/

@@ -230,8 +230,6 @@ export default function FinancialPlanGenerator() {
             <span>{returnRate}% annual return</span>
             <span>•</span>
             <span>{withdrawalRate}% safe withdrawal rate</span>
-            <span>•</span>
-            <span>Goals calculated at 6% withdrawal (from "Money Master the Game")</span>
           </div>
         </div>
 
@@ -1647,10 +1645,10 @@ export default function FinancialPlanGenerator() {
                     <div>
                       <h3 className="text-lg font-semibold text-white mb-2">The Formula</h3>
                       <p className="text-gray-400 text-sm">
-                        Target = Annual Security Expenses ÷ 6% withdrawal rate
+                        Target = Annual Security Expenses ÷ {withdrawalRate}% withdrawal rate
                       </p>
                       <p className="text-purple-400 text-sm mt-1">
-                        Example: ${Math.round((financialData?.monthlyExpenses?.security || 0) * 12).toLocaleString()} ÷ 0.06 = ${Math.round((financialData?.monthlyExpenses?.security || 0) * 12 / 0.06).toLocaleString()}
+                        Example: {currencySymbol}{Math.round((financialData?.monthlyExpenses?.security || 0) * 12).toLocaleString()} ÷ {withdrawalRate}% = {currencySymbol}{Math.round((financialData?.monthlyExpenses?.security || 0) * 12 / (withdrawalRate / 100)).toLocaleString()}
                       </p>
                     </div>
                     <div>
@@ -1700,10 +1698,10 @@ export default function FinancialPlanGenerator() {
                     <div>
                       <h3 className="text-lg font-semibold text-white mb-2">The Formula</h3>
                       <p className="text-gray-400 text-sm">
-                        Target = (Security Expenses + Vitality Expenses) ÷ 6% withdrawal rate
+                        Target = (Security Expenses + Vitality Expenses) ÷ {withdrawalRate}% withdrawal rate
                       </p>
                       <p className="text-teal-400 text-sm mt-1">
-                        Example: (${Math.round((financialData?.monthlyExpenses?.security || 0) * 12).toLocaleString()} + ${Math.round((financialData?.monthlyExpenses?.vitality || 0)).toLocaleString()}) ÷ 0.06
+                        Example: ({currencySymbol}{Math.round((financialData?.monthlyExpenses?.security || 0) * 12).toLocaleString()} + {currencySymbol}{Math.round((financialData?.monthlyExpenses?.vitality || 0)).toLocaleString()}) ÷ {withdrawalRate}%
                       </p>
                     </div>
                     <div>
@@ -1754,10 +1752,10 @@ export default function FinancialPlanGenerator() {
                     <div>
                       <h3 className="text-lg font-semibold text-white mb-2">The Formula</h3>
                       <p className="text-gray-400 text-sm">
-                        Target = Annual Independence Expenses ÷ 6% withdrawal rate
+                        Target = Annual Independence Expenses ÷ {withdrawalRate}% withdrawal rate
                       </p>
                       <p className="text-pink-400 text-sm mt-1">
-                        Example: ${Math.round((financialData?.monthlyExpenses?.independence || 0) * 12).toLocaleString()} ÷ 0.06 = ${Math.round((financialData?.monthlyExpenses?.independence || 0) * 12 / 0.06).toLocaleString()}
+                        Example: {currencySymbol}{Math.round((financialData?.monthlyExpenses?.independence || 0) * 12).toLocaleString()} ÷ {withdrawalRate}% = {currencySymbol}{Math.round((financialData?.monthlyExpenses?.independence || 0) * 12 / (withdrawalRate / 100)).toLocaleString()}
                       </p>
                     </div>
                     <div>

@@ -170,3 +170,66 @@ export interface ExportData {
   financialPlans: FinancialPlan[];
   goals: Goal[];
 }
+
+// UK FIRE specific types
+export interface UKSpendingCategory {
+  monthly_gbp: number;
+  confidence: 'high' | 'medium' | 'low';
+}
+
+export interface UKSpendingCategories {
+  housing: UKSpendingCategory;
+  bills: UKSpendingCategory;
+  transport: UKSpendingCategory;
+  food: UKSpendingCategory;
+  fun: UKSpendingCategory;
+  subscriptions: UKSpendingCategory;
+  other: UKSpendingCategory;
+}
+
+export interface UKAssetCategories {
+  cashSavings: number;
+  isaBalance: number;
+  pensionTotal: number;
+  otherInvestments: number;
+  propertyEquity: number;
+}
+
+export type UKDebtType = 'credit_card' | 'bnpl' | 'personal_loan' | 'student_loan' | 'mortgage';
+
+export interface UKDebtEntry {
+  type: UKDebtType;
+  balance: number;
+  apr: number;
+}
+
+export type UKLifestyleBand = 'modest' | 'comfortable' | 'generous';
+
+export interface UKLifestyleBands {
+  modest: number;    // £18k/year
+  comfortable: number; // £30k/year
+  generous: number;   // £50k/year
+}
+
+export interface UKGoals {
+  targetRetirementAge: number;
+  lifestyleBand: UKLifestyleBand;
+  targetAnnualSpend_gbp?: number;
+}
+
+export interface LeverScenario {
+  description: string;
+  projectedFIAge: number;
+  monthlyImpact: number;
+}
+
+export interface UKFIREResult {
+  leak_gbp_per_month: number;
+  monthly_capacity_gbp: number;
+  savings_rate_percent: number;
+  fireNumber_gbp: number;
+  projectedFIAge: number;
+  threeActions: string[];
+  leverScenarios: LeverScenario[];
+  highInterestDebtWarning?: boolean;
+}

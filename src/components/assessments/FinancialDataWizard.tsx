@@ -1,15 +1,19 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFinancialPlanStore } from '../../stores';
+import { calculateUKFIRE } from '../../lib/calculations/uk-fire';
+import type { UKFIREResult } from '../../types';
 
 interface Question {
   id: keyof FormData | 'investedAssetsOptOut';
   question: string;
   description: string;
-  type: 'number' | 'checkbox';
+  type: 'number' | 'checkbox' | 'select';
   prefix?: string;
   suffix?: string;
   required?: boolean;
+  ukOnly?: boolean; // Only show for UK users
+  options?: Array<{ value: string; label: string }>;
 }
 
 interface QuestionSection {
@@ -60,7 +64,9 @@ interface FormData {
   // Section 4: Key Expenses - Independence (1 question)
   monthlyIncomeForLifestyle: string;
 
-  // Section 5: Where You Are Going (4 questions)
+  // Section 5: Where You Are Going (6 questions - base 5 + 1 UK FIRE specific)
+  currentAge: string;
+  targetRetirementAge: string;
   nextYearIncome: string;
   savingsPercentage: string;
   incomeGrowth3to5Years: string;
@@ -105,10 +111,59 @@ const initialFormData: FormData = {
   monthlyIncomeForLifestyle: '',
 
   // Section 5: Future
+  currentAge: '',
+  targetRetirementAge: '55',
   nextYearIncome: '',
   savingsPercentage: '',
   incomeGrowth3to5Years: '',
   incomeGrowth6to10Years: '',
+};
+
+// Currency symbol mapping
+const getCurrencySymbol = (currencyCode: string): string => {
+  const symbols: Record<string, string> = {
+    'USD': '$',
+    'EUR': '€',
+    'GBP': '£',
+    'JPY': '¥',
+    'CAD': 'C$',
+    'AUD': 'A$',
+    'CHF': 'Fr',
+    'CNY': '¥',
+    'INR': '₹',
+    'BRL': 'R$',
+    'MXN': '$',
+    'SGD': 'S$',
+  };
+  return symbols[currencyCode] || '$';
+};
+
+// UK-specific descriptions and examples
+const UKContextExamples = {
+  traditionalRetirement: {
+    description: 'UK pension pots, SIPPs, workplace pensions, State Pension',
+    examples: ['Workplace pension', 'Personal pension (SIPP)', 'State Pension age entitlement']
+  },
+  taxAdvantagedInvestments: {
+    description: 'ISAs (Individual Savings Accounts), premium bonds, insurance policies',
+    examples: ['Cash ISA', 'Stocks & Shares ISA', 'Lifetime ISA', 'Premium Bonds']
+  },
+  monthlyUtilities: {
+    description: '(including council tax, water, gas, electricity, broadband)',
+    examples: ['Council tax', 'Water rates', 'Gas & electricity', 'Broadband & phone']
+  },
+  monthlyHealthInsurance: {
+    description: '(NHS is free - consider private medical insurance, dental plans, health cash plans)',
+    examples: ['Private medical insurance', 'Dental insurance', 'Health cash plan']
+  },
+  monthlyTransportation: {
+    description: '(including public transport season tickets, fuel, insurance, tax)',
+    examples: ['Season ticket', 'Fuel costs', 'Car insurance', 'Vehicle tax (VED)']
+  },
+  studentLoanBalance: {
+    description: '(UK Plan 1, Plan 2, or Postgraduate loans - only count if not fully written off)',
+    examples: ['Plan 1 loan', 'Plan 2 loan', 'Postgraduate loan']
+  }
 };
 
 // 27-question structure matching screenshots exactly
@@ -370,8 +425,26 @@ const questionSections: QuestionSection[] = [
     sectionNumber: 5,
     title: 'Where You Are Going',
     subtitle: 'SECTION 5',
-    questionRange: '24-27',
+    questionRange: '24-29',
     questions: [
+      {
+        id: 'currentAge',
+        question: 'What is your current age?',
+        description: 'This helps us project when you might reach financial independence',
+        type: 'number' as const,
+        suffix: 'years old',
+        required: true,
+        ukOnly: true, // Only show for UK users
+      },
+      {
+        id: 'targetRetirementAge',
+        question: 'At what age would you like to reach financial independence?',
+        description: 'This is your target age for achieving FIRE (Financial Independence, Retire Early)',
+        type: 'number' as const,
+        suffix: 'years old',
+        required: true,
+        ukOnly: true, // Only show for UK users
+      },
       {
         id: 'nextYearIncome',
         question: 'What is your anticipated income next year?',
@@ -408,14 +481,14 @@ const questionSections: QuestionSection[] = [
 
 export default function FinancialDataWizard() {
   const navigate = useNavigate();
-  const { setFinancialData, currency } = useFinancialPlanStore();
+  const { setFinancialData, currency, isUKMode } = useFinancialPlanStore();
 
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const currentSection = questionSections[currentSectionIndex];
-  const totalQuestions = 27;
+  const totalQuestions = isUKMode ? 29 : 27;
   const currentQuestionStart = currentSectionIndex === 0 ? 1 :
     questionSections.slice(0, currentSectionIndex).reduce((sum, s) => sum + s.questions.length, 1);
   const currentQuestionEnd = currentQuestionStart + currentSection.questions.length - 1;
@@ -728,8 +801,152 @@ export default function FinancialDataWizard() {
       ],
     };
 
+    // Store financial data
     setFinancialData(financialData);
-    navigate('/planning/generate');
+
+    // For UK users, calculate and store UK FIRE results
+    if (isUKMode) {
+      // Map 27-question data to UK FIRE format
+      const monthlyIncome_gbp = annualIncome / 12;
+
+      // Map spending categories (7 categories)
+      const ukSpending = {
+        housing: {
+          monthly_gbp: parseFloat(formData.monthlyHousing) || 0,
+          confidence: 'medium' as const
+        },
+        bills: {
+          monthly_gbp: parseFloat(formData.monthlyUtilities) || 0,
+          confidence: 'medium' as const
+        },
+        transport: {
+          monthly_gbp: parseFloat(formData.monthlyTransportation) || 0,
+          confidence: 'medium' as const
+        },
+        food: {
+          monthly_gbp: parseFloat(formData.monthlyFood) || 0,
+          confidence: 'medium' as const
+        },
+        fun: {
+          monthly_gbp: (parseFloat(formData.halfMonthlyLuxuries) || 0) +
+                  (parseFloat(formData.halfMonthlyDining) || 0) +
+                  (parseFloat(formData.halfMonthlyClothing) || 0),
+          confidence: 'medium' as const
+        },
+        subscriptions: {
+          monthly_gbp: 0, // Not captured in 27 questions
+          confidence: 'low' as const
+        },
+        other: {
+          monthly_gbp: 0, // Not captured in 27 questions
+          confidence: 'low' as const
+        },
+      };
+
+      // Map assets (5 categories)
+      const ukAssets = {
+        cashSavings: parseFloat(formData.nonInvestedAssets) || 0,
+        isaBalance: parseFloat(formData.taxAdvantagedInvestments) || 0,
+        pensionTotal: parseFloat(formData.traditionalRetirement) || 0,
+        otherInvestments: formData.investedAssetsList.reduce((sum, asset) => sum + (parseFloat(asset.value) || 0), 0),
+        propertyEquity: (parseFloat(formData.homeMarketValue) || 0) - (parseFloat(formData.mortgageBalance) || 0),
+      };
+
+      // Map debts (5 types)
+      const ukDebts = [];
+
+      const mortgageBal = parseFloat(formData.mortgageBalance) || 0;
+      if (mortgageBal > 0) {
+        ukDebts.push({ type: 'mortgage' as const, balance: mortgageBal, apr: 4.0 });
+      }
+
+      const ccBal = parseFloat(formData.creditCardBalance) || 0;
+      if (ccBal > 0) {
+        ukDebts.push({ type: 'credit_card' as const, balance: ccBal, apr: 18.0 });
+      }
+
+      const studentBal = parseFloat(formData.studentLoanBalance) || 0;
+      if (studentBal > 0) {
+        ukDebts.push({ type: 'student_loan' as const, balance: studentBal, apr: 6.0 });
+      }
+
+      const autoBal = parseFloat(formData.autoLoanBalance) || 0;
+      if (autoBal > 0) {
+        ukDebts.push({ type: 'personal_loan' as const, balance: autoBal, apr: 8.0 });
+      }
+
+      const personalBal = parseFloat(formData.personalLoanBalance) || 0;
+      if (personalBal > 0) {
+        ukDebts.push({ type: 'personal_loan' as const, balance: personalBal, apr: 10.0 });
+      }
+
+      // Calculate total monthly spending for FIRE calculation
+      const totalMonthlySpending_gbp = Object.values(ukSpending).reduce(
+        (sum, cat) => sum + cat.monthly_gbp, 0
+      );
+      const monthlyCapacity_gbp = monthlyIncome_gbp - totalMonthlySpending_gbp;
+
+      // Calculate lifestyle bands from actual spending data
+      // Financial Security expenses (5 questions) = modest (basic necessities)
+      const securityExpenses_gbp = (
+        (parseFloat(formData.monthlyHousing) || 0) +
+        (parseFloat(formData.monthlyUtilities) || 0) +
+        (parseFloat(formData.monthlyFood) || 0) +
+        (parseFloat(formData.monthlyTransportation) || 0) +
+        (parseFloat(formData.monthlyHealthInsurance) || 0)
+      ) * 12; // Convert to annual
+
+      // Current lifestyle (from question 23) = comfortable
+      const currentLifestyle_gbp = monthlyIncomeForLifestyle * 12;
+
+      // Current lifestyle × 2 = generous
+      const generousLifestyle_gbp = currentLifestyle_gbp * 2;
+
+      // Use comfortable (current lifestyle) as the baseline for FIRE calculation
+      const ukGoals = {
+        targetRetirementAge: parseInt(formData.targetRetirementAge) || 55,
+        lifestyleBand: 'comfortable' as const,
+        targetAnnualSpend_gbp: currentLifestyle_gbp,
+      };
+
+      // Get current age from form
+      const currentAge = parseInt(formData.currentAge) || 35;
+
+      try {
+        // Calculate UK FIRE results
+        const fireResult: UKFIREResult = calculateUKFIRE(
+          currentAge,
+          monthlyIncome_gbp,
+          ukSpending,
+          ukAssets,
+          ukDebts,
+          ukGoals,
+          Math.max(0, monthlyCapacity_gbp), // Ensure non-negative
+          0.05 // 5% annual return
+        );
+
+        // Store calculated lifestyle bands in session storage for reference
+        sessionStorage.setItem('ukLifestyleBands', JSON.stringify({
+          modest: securityExpenses_gbp,
+          comfortable: currentLifestyle_gbp,
+          generous: generousLifestyle_gbp,
+        }));
+
+        // Store FIRE results in session storage for ResultsDashboard
+        sessionStorage.setItem('ukFireResults', JSON.stringify(fireResult));
+        sessionStorage.setItem('ukFireTimestamp', Date.now().toString());
+
+        console.log('UK FIRE results calculated and stored:', fireResult);
+      } catch (error) {
+        console.error('Error calculating UK FIRE results:', error);
+      }
+
+      // Navigate to unified results dashboard
+      navigate('/results');
+    } else {
+      // Non-UK users go to financial plan generator
+      navigate('/planning/generate');
+    }
   };
 
   return (
@@ -866,7 +1083,9 @@ export default function FinancialDataWizard() {
               </div>
             ) : (
               <>
-                {currentSection.questions.map((question) => (
+                {currentSection.questions
+                  .filter((question) => !question.ukOnly || isUKMode)
+                  .map((question) => (
                   <div key={question.id}>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                       {question.question}
@@ -874,6 +1093,20 @@ export default function FinancialDataWizard() {
                     </label>
                     {question.description && (
                       <p className="text-gray-400 text-sm mb-3">{question.description}</p>
+                    )}
+
+                    {/* UK-specific examples when GBP is selected */}
+                    {isUKMode && UKContextExamples[question.id as keyof typeof UKContextExamples] && (
+                      <div className="bg-primary-purple/10 border border-primary-purple/30 rounded-lg p-3 mb-3">
+                        <p className="text-xs text-gray-300 mb-2">
+                          <strong>UK Context:</strong> {UKContextExamples[question.id as keyof typeof UKContextExamples].description}
+                        </p>
+                        <ul className="text-xs text-gray-400 space-y-1">
+                          {UKContextExamples[question.id as keyof typeof UKContextExamples].examples.map((example, idx) => (
+                            <li key={idx}>• {example}</li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                     <div className="relative">
                       {question.type === 'checkbox' ? (
@@ -886,11 +1119,25 @@ export default function FinancialDataWizard() {
                           />
                           <span className="text-gray-300">{question.question}</span>
                         </label>
+                      ) : question.type === 'select' ? (
+                        <select
+                          value={formData[question.id as keyof FormData] as string}
+                          onChange={(e) => handleInputChange(question.id, e.target.value)}
+                          className={`w-full bg-dark-bg border ${
+                            errors[question.id] ? 'border-red-500' : 'border-dark-border'
+                          } rounded-lg px-4 py-3 text-white focus:outline-none focus:border-primary-teal`}
+                        >
+                          {question.options?.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
                       ) : (
                         <>
-                          {question.prefix && question.prefix !== '$' && (
+                          {question.prefix && (
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                              {question.prefix}
+                              {getCurrencySymbol(currency)}
                             </span>
                           )}
                           <input
@@ -900,7 +1147,7 @@ export default function FinancialDataWizard() {
                             className={`w-full bg-dark-bg border ${
                               errors[question.id] ? 'border-red-500' : 'border-dark-border'
                             } rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-primary-teal ${
-                              (question.prefix && question.prefix !== '$') ? 'pl-12' : ''
+                              question.prefix ? 'pl-12' : ''
                             } ${question.suffix ? 'pr-12' : ''}`}
                             placeholder="0"
                           />

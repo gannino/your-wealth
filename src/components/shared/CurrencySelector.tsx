@@ -19,7 +19,7 @@ const CURRENCIES = [
 
 export default function CurrencySelector() {
   const navigate = useNavigate();
-  const { currency, setCurrency, financialData } = useFinancialPlanStore();
+  const { currency, setCurrency, financialData, setUKMode } = useFinancialPlanStore();
   const [selectedCurrency, setSelectedCurrency] = useState(currency);
 
   // Redirect if currency and data are already set
@@ -35,6 +35,9 @@ export default function CurrencySelector() {
   const handleSelect = (currencyCode: string) => {
     setSelectedCurrency(currencyCode);
     setCurrency(currencyCode);
+
+    // Activate UK mode for GBP currency
+    setUKMode(currencyCode === 'GBP');
   };
 
   const handleContinue = () => {

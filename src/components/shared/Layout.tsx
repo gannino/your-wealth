@@ -33,31 +33,29 @@ export function Layout() {
               <Link
                 to="/training/hub"
                 className="text-gray-300 hover:text-primary-teal transition-colors"
+                data-testid="nav-training"
               >
                 Training
               </Link>
               <Link
                 to="/assessments/blueprint"
                 className="text-gray-300 hover:text-primary-teal transition-colors"
+                data-testid="nav-assessments"
               >
                 Assessments
               </Link>
               <Link
-                to="/assessments/currency"
+                to={hasFinancialData ? "/results" : "/assessments/currency"}
                 className="text-gray-300 hover:text-primary-teal transition-colors"
+                data-testid="nav-financial-plan"
               >
-                Financial Data
-              </Link>
-              <Link
-                to={hasFinancialData ? "/planning/generate" : "/assessments/currency"}
-                className="text-gray-300 hover:text-primary-teal transition-colors"
-              >
-                {hasFinancialData ? 'Planning' : 'Financial Plan'}
+                {hasFinancialData ? 'Results' : 'Financial Plan'}
               </Link>
               <button
                 onClick={() => setShowClearConfirm(true)}
                 className="text-gray-400 hover:text-red-400 transition-colors text-sm"
                 title="Clear all data"
+                data-testid="clear-data-button"
               >
                 Clear Data
               </button>

@@ -175,11 +175,44 @@ interface FinancialPlanStore {
   customReturnRates: Record<'conservative' | 'current' | 'aggressive', number>;
   withdrawalRate: number;
   useMonthlyCompounding: boolean;
+  // UK FIRE mode fields
+  isUKMode: boolean;
+  ukSpending?: {
+    housing: { monthly_gbp: number; confidence: 'high' | 'medium' | 'low' };
+    bills: { monthly_gbp: number; confidence: 'high' | 'medium' | 'low' };
+    transport: { monthly_gbp: number; confidence: 'high' | 'medium' | 'low' };
+    food: { monthly_gbp: number; confidence: 'high' | 'medium' | 'low' };
+    fun: { monthly_gbp: number; confidence: 'high' | 'medium' | 'low' };
+    subscriptions: { monthly_gbp: number; confidence: 'high' | 'medium' | 'low' };
+    other: { monthly_gbp: number; confidence: 'high' | 'medium' | 'low' };
+  };
+  ukAssets?: {
+    cashSavings: number;
+    isaBalance: number;
+    pensionTotal: number;
+    otherInvestments: number;
+    propertyEquity: number;
+  };
+  ukDebts?: Array<{
+    type: 'credit_card' | 'bnpl' | 'personal_loan' | 'student_loan' | 'mortgage';
+    balance: number;
+    apr: number;
+  }>;
+  ukGoals?: {
+    targetRetirementAge: number;
+    lifestyleBand: 'modest' | 'comfortable' | 'generous';
+    targetAnnualSpend_gbp?: number;
+  };
   setFinancialData: (data: FinancialData | null) => void;
   setCurrency: (currency: string) => void;
   setCustomReturnRates: (rates: Record<'conservative' | 'current' | 'aggressive', number>) => void;
   setWithdrawalRate: (rate: number) => void;
   setUseMonthlyCompounding: (useMonthly: boolean) => void;
+  setUKSpending: (spending: FinancialPlanStore['ukSpending']) => void;
+  setUKAssets: (assets: FinancialPlanStore['ukAssets']) => void;
+  setUKDebts: (debts: FinancialPlanStore['ukDebts']) => void;
+  setUKGoals: (goals: FinancialPlanStore['ukGoals']) => void;
+  setUKMode: (isUKMode: boolean) => void;
 }
 
 export const useAssessmentStore = create<AssessmentStore>()(
@@ -298,11 +331,22 @@ export const useFinancialPlanStore = create<FinancialPlanStore>()(
       },
       withdrawalRate: 5, // Default 5% withdrawal rate
       useMonthlyCompounding: true, // Default to monthly compounding (matches most financial apps)
+      // UK FIRE mode state
+      isUKMode: false,
+      ukSpending: undefined,
+      ukAssets: undefined,
+      ukDebts: undefined,
+      ukGoals: undefined,
       setFinancialData: (data) => set({ financialData: data }),
       setCurrency: (currency) => set({ currency }),
       setCustomReturnRates: (rates) => set({ customReturnRates: rates }),
       setWithdrawalRate: (rate) => set({ withdrawalRate: rate }),
       setUseMonthlyCompounding: (useMonthly) => set({ useMonthlyCompounding: useMonthly }),
+      setUKSpending: (spending) => set({ ukSpending: spending }),
+      setUKAssets: (assets) => set({ ukAssets: assets }),
+      setUKDebts: (debts) => set({ ukDebts: debts }),
+      setUKGoals: (goals) => set({ ukGoals: goals }),
+      setUKMode: (isUKMode) => set({ isUKMode }),
     }),
     {
       name: 'your-wealth-financial-plan',
@@ -313,6 +357,11 @@ export const useFinancialPlanStore = create<FinancialPlanStore>()(
         customReturnRates: state.customReturnRates,
         withdrawalRate: state.withdrawalRate,
         useMonthlyCompounding: state.useMonthlyCompounding,
+        isUKMode: state.isUKMode,
+        ukSpending: state.ukSpending,
+        ukAssets: state.ukAssets,
+        ukDebts: state.ukDebts,
+        ukGoals: state.ukGoals,
       }),
     }
   )

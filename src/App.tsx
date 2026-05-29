@@ -189,7 +189,6 @@ function App() {
             </Suspense>
           }
         />
-
         {/* Planning Routes */}
         <Route
           path="planning/generate"

@@ -1,4 +1,0 @@
-most of the app is working, but the financial plan most of the time redirect to the currency, we should have a method to detect that the data have already been provided and instead of redirecting to the currency we should go to planning/generate?
-
-also when the data are in the local storage, should be reloaded and this is valid, for all the app parts, from the training to the assesment and the financial data.
-

@@ -44,7 +44,9 @@ export default function ResultsDashboard() {
         try {
           const parsed = JSON.parse(storedResults);
           console.log('Successfully loaded FIRE results from session storage:', parsed);
-          setFireResult(parsed);
+          requestAnimationFrame(() => {
+            setFireResult(parsed);
+          });
           return;
         } catch (e) {
           console.error('Error parsing stored FIRE results:', e);
@@ -76,7 +78,9 @@ export default function ResultsDashboard() {
           0.05
         );
         console.log('Calculated FIRE results from store:', result);
-        setFireResult(result);
+        requestAnimationFrame(() => {
+          setFireResult(result);
+        });
       } else {
         console.log('Cannot calculate FIRE results - missing store data');
       }
